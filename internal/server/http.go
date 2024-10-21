@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/bento01dev/cookbook/internal/handlers"
 )
 
 func startHttp(ctx context.Context, getEnv func(string) string) error {
@@ -21,9 +23,10 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 	}
 
 	// initialising and starting server..
-	// TODO: need to pass mux
+	srv := newServer()
 	httpServer := &http.Server{
-		Addr: net.JoinHostPort(host, port),
+		Addr:    net.JoinHostPort(host, port),
+		Handler: srv,
 	}
 	go func() {
 		slog.Info("starting cookbook service..", "addr", httpServer.Addr)
@@ -50,5 +53,19 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 		}
 	}()
 	wg.Wait()
+
 	return nil
+}
+
+func newServer() http.Handler {
+	mux := http.NewServeMux()
+	addRoutes(mux)
+	//TODO: add middlewares
+	var handler http.Handler = mux
+	handler = NewRequestTimerMiddleware(handler)
+	return handler
+}
+
+func addRoutes(mux *http.ServeMux) {
+	mux.Handle("GET /healthz", handlers.HandleHealthz())
 }
