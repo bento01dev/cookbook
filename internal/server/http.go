@@ -9,10 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bento01dev/cookbook/internal/handlers"
+	"github.com/bento01dev/cookbook/internal/services"
 )
 
 func startHttp(ctx context.Context, getEnv func(string) string) error {
+	var err error
 	host := "127.0.0.1"
 	if getEnv("HTTP_HOST") != "" {
 		host = getEnv("HTTP_HOST")
@@ -23,7 +24,15 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 	}
 
 	// initialising and starting server..
-	srv := newServer()
+	var rs recipeService
+	if getEnv("MEMORY_REPO") != "" {
+		rs, err = services.NewRecipeService(services.WithMemoryRepository())
+		if err != nil {
+			return err
+		}
+	}
+
+	srv := NewServer(rs)
 	httpServer := &http.Server{
 		Addr:    net.JoinHostPort(host, port),
 		Handler: srv,
@@ -57,15 +66,23 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 	return nil
 }
 
-func newServer() http.Handler {
+func NewServer(
+	rs recipeService,
+) http.Handler {
 	mux := http.NewServeMux()
-	addRoutes(mux)
+	addRoutes(mux, rs)
 	//TODO: add middlewares
 	var handler http.Handler = mux
 	handler = NewRequestTimerMiddleware(handler)
 	return handler
 }
 
-func addRoutes(mux *http.ServeMux) {
-	mux.Handle("GET /healthz", handlers.HandleHealthz())
+func addRoutes(
+	mux *http.ServeMux,
+	rs recipeService,
+) {
+	mux.Handle("GET /healthz", handleHealthz())
+
+	mux.Handle("GET /recipe/{id}", handleGetRecipe(rs))
+	mux.Handle("POST /recipe", handleCreateRecipe(rs))
 }
