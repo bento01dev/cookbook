@@ -23,16 +23,16 @@ func NewConfig(getEnv func(string) string) (Config, error) {
 	}
 
 	var inMemory bool
-	if getEnv("MEMORY_REPO") != "" {
-		inMemory, err = strconv.ParseBool(getEnv("MEMORY_REPO"))
+	if v := getEnv("MEMORY_REPO"); v != "" {
+		inMemory, err = strconv.ParseBool(v)
 		if err != nil {
 			return Config{}, err
 		}
 	}
 
 	var getRecipeTimeoutMs int = 1000
-	if getEnv("GET_RECIPE_TIMEOUT_MS") != "" {
-		getRecipeTimeoutMs, err = strconv.Atoi(getEnv("GET_RECIPE_TIMEOUT_MS"))
+	if v := getEnv("GET_RECIPE_TIMEOUT_MS"); v != "" {
+		getRecipeTimeoutMs, err = strconv.Atoi(v)
 		if err != nil {
 			return Config{}, err
 		}
