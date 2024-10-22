@@ -74,6 +74,7 @@ func NewServer(
 	//TODO: add middlewares
 	var handler http.Handler = mux
 	handler = NewRequestTimerMiddleware(handler)
+	handler = NewRequestIdMiddleware(handler)
 	return handler
 }
 
