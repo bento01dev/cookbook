@@ -3,24 +3,25 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/bento01dev/cookbook/internal/config"
 	"github.com/bento01dev/cookbook/internal/services"
 )
 
 func startHttp(ctx context.Context, getEnv func(string) string) error {
-	var err error
-	host := "127.0.0.1"
-	if getEnv("HTTP_HOST") != "" {
-		host = getEnv("HTTP_HOST")
-	}
-	port := "8080"
-	if getEnv("HTTP_PORT") != "" {
-		port = getEnv("HTTP_PORT")
+	var (
+		err  error
+		conf config.Config
+	)
+	conf, err = config.NewConfig(getEnv)
+	if err != nil {
+		return fmt.Errorf("unable to generate config:%w", err)
 	}
 
 	// initialising and starting server..
@@ -32,9 +33,9 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 		}
 	}
 
-	srv := NewServer(rs)
+	srv := NewServer(rs, conf)
 	httpServer := &http.Server{
-		Addr:    net.JoinHostPort(host, port),
+		Addr:    net.JoinHostPort(conf.Host, conf.Port),
 		Handler: srv,
 	}
 	go func() {
@@ -68,9 +69,10 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 
 func NewServer(
 	rs recipeService,
+	conf config.Config,
 ) http.Handler {
 	mux := http.NewServeMux()
-	addRoutes(mux, rs)
+	addRoutes(mux, rs, conf)
 	//TODO: add middlewares
 	var handler http.Handler = mux
 	handler = NewRequestTimerMiddleware(handler)
@@ -81,9 +83,10 @@ func NewServer(
 func addRoutes(
 	mux *http.ServeMux,
 	rs recipeService,
+	conf config.Config,
 ) {
 	mux.Handle("GET /healthz", handleHealthz())
 
-	mux.Handle("GET /recipe/{id}", handleGetRecipe(rs))
+	mux.Handle("GET /recipe/{id}", handleGetRecipe(rs, conf.GetRecipeTimeoutMs))
 	mux.Handle("POST /recipe", handleCreateRecipe(rs))
 }

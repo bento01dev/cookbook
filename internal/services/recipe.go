@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -10,7 +11,7 @@ import (
 )
 
 type recipeRepository interface {
-	Get(uuid.UUID) (recipe.Recipe, error)
+	Get(context.Context, uuid.UUID) (recipe.Recipe, error)
 	Add(recipe.Recipe) error
 	Update(recipe.Recipe) (recipe.Recipe, error)
 	Delete(uuid.UUID) error
@@ -57,14 +58,14 @@ func (rs RecipeService) CreateRecipe(name string, description string, cuisine do
 	return r, nil
 }
 
-func (rs RecipeService) GetRecipe(uuidStr string) (recipe.Recipe, error) {
+func (rs RecipeService) GetRecipe(ctx context.Context, uuidStr string) (recipe.Recipe, error) {
 	slog.Info("retrieving recipe..", "recipe_id", uuidStr)
 	recipeUuid, err := uuid.FromBytes([]byte(uuidStr))
 	if err != nil {
 		return recipe.Recipe{}, fmt.Errorf("invalid uuid format: %w", err)
 	}
 
-	r, err := rs.recipes.Get(recipeUuid)
+	r, err := rs.recipes.Get(ctx, recipeUuid)
 	if err != nil {
 		return recipe.Recipe{}, err
 	}

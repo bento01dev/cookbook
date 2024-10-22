@@ -1,6 +1,7 @@
 package recipe
 
 import (
+	"context"
 	"sync"
 
 	"github.com/google/uuid"
@@ -16,7 +17,7 @@ func NewMemoryRepository() *MemoryRepository {
 		recipes: make(map[uuid.UUID]Recipe),
 	}
 }
-func (mr *MemoryRepository) Get(id uuid.UUID) (Recipe, error) {
+func (mr *MemoryRepository) Get(ctx context.Context, id uuid.UUID) (Recipe, error) {
 	if recipe, ok := mr.recipes[id]; ok {
 		return recipe, nil
 	}
