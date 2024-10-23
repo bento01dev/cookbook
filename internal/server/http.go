@@ -75,8 +75,8 @@ func NewServer(
 	addRoutes(mux, rs, conf)
 	//TODO: add middlewares
 	var handler http.Handler = mux
-	handler = NewRequestTimerMiddleware(handler)
-	handler = NewRequestIdMiddleware(handler)
+	handler = requestTimerMiddleware(handler)
+	handler = requestIdMiddleware(handler)
 	return handler
 }
 
@@ -87,6 +87,6 @@ func addRoutes(
 ) {
 	mux.Handle("GET /healthz", handleHealthz())
 
-	mux.Handle("GET /recipe/{id}", handleGetRecipe(rs, conf.GetRecipeTimeoutMs))
+	mux.Handle("GET /recipe/{id}", timeoutMiddleware(handleGetRecipe(rs), conf.GetRecipeTimeoutMs))
 	mux.Handle("POST /recipe", handleCreateRecipe(rs))
 }

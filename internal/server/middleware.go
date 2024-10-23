@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func NewRequestTimerMiddleware(h http.Handler) http.Handler {
+func requestTimerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		h.ServeHTTP(w, r)
@@ -21,13 +21,24 @@ func NewRequestTimerMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-func NewRequestIdMiddleware(h http.Handler) http.Handler {
+func requestIdMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		request_id := ctx.Value("request_id")
 		if request_id == nil {
 			ctx = context.WithValue(ctx, "request_id", uuid.New().String())
 		}
+		r = r.WithContext(ctx)
+		h.ServeHTTP(w, r)
+	})
+}
+
+func timeoutMiddleware(h http.Handler, timeout time.Duration) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
 		r = r.WithContext(ctx)
 		h.ServeHTTP(w, r)
 	})

@@ -1,12 +1,15 @@
 package config
 
-import "strconv"
+import (
+	"strconv"
+	"time"
+)
 
 type Config struct {
 	Host               string
 	Port               string
 	InMemory           bool
-	GetRecipeTimeoutMs int
+	GetRecipeTimeoutMs time.Duration
 }
 
 func NewConfig(getEnv func(string) string) (Config, error) {
@@ -30,9 +33,9 @@ func NewConfig(getEnv func(string) string) (Config, error) {
 		}
 	}
 
-	var getRecipeTimeoutMs int = 1000
-	if v := getEnv("GET_RECIPE_TIMEOUT_MS"); v != "" {
-		getRecipeTimeoutMs, err = strconv.Atoi(v)
+	var getRecipeTimeoutMs = 1000 * time.Millisecond
+	if v := getEnv("GET_RECIPE_TIMEOUT"); v != "" {
+		getRecipeTimeoutMs, err = time.ParseDuration(v)
 		if err != nil {
 			return Config{}, err
 		}
