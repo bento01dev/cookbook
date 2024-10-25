@@ -53,3 +53,23 @@ func (r Recipe) ID() uuid.UUID {
 func (r Recipe) Name() string {
 	return r.item.Name
 }
+
+func (r Recipe) Description() string {
+	return r.item.Description
+}
+
+func (r Recipe) Cuisine() string {
+	return string(r.item.Cuisine)
+}
+
+func (r Recipe) Ingredients() []domain.Ingredient {
+	return r.Ingredients()
+}
+
+func (r Recipe) Variations() []string {
+	var res []string
+	for _, v := range r.variations {
+		res = append(res, v.Variation())
+	}
+	return res
+}

@@ -29,6 +29,23 @@ func handleGetRecipe(rs recipeService) http.Handler {
 		Msg     string `json:"msg"`
 	}
 
+	type ingredient struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+		Type string `json:"type"`
+	}
+
+	type prep struct {
+		IngredientID string `json:"ingredient_id"`
+		Action       string `json:"action"`
+	}
+
+	type step struct {
+		IngredientID string  `json:"ingredient_id"`
+		Action       string  `json:"action"`
+		Temperature  float64 `json:"temperature"`
+	}
+
 	type recipeResponse struct {
 		Item struct {
 			ID          string `json:"id"`
@@ -36,25 +53,21 @@ func handleGetRecipe(rs recipeService) http.Handler {
 			Description string `json:"description"`
 			Cuisine     string `json:"cuisine"`
 		} `json:"item"`
-		Ingredients []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-			Type string `json:"type"`
-		} `json:"ingredients"`
-		Variations []string `json:"variations"`
-		Prep       []struct {
-			IngredientID string `json:"ingredient_id"`
-			Action       string `json:"action"`
-		} `json:"prep"`
-		Steps []struct {
-			IngredientID string  `json:"ingredient_id"`
-			Action       string  `json:"action"`
-			Temperature  float64 `json:"temperature"`
-		}
+		Ingredients []ingredient `json:"ingredients"`
+		Variations  []string     `json:"variations"`
+		Prep        []prep       `json:"prep"`
+		Steps       []step       `json:"steps"`
 	}
 
-	convertResponse := func(recipe.Recipe) recipeResponse {
+	convertResponse := func(r recipe.Recipe) recipeResponse {
 		var res recipeResponse
+		res.Item.ID = r.ID().String()
+		res.Item.Name = r.Name()
+		res.Item.Description = r.Description()
+		for _, v := range r.Ingredients() {
+			res.Ingredients = append(res.Ingredients, ingredient{ID: v.ID.String(), Name: v.Name, Type: string(v.Type)})
+		}
+		res.Variations = r.Variations()
 		return res
 	}
 
@@ -62,9 +75,10 @@ func handleGetRecipe(rs recipeService) http.Handler {
 		id := r.PathValue("id")
 		ctx := r.Context()
 		recipeRes, err := rs.GetRecipe(ctx, id)
+
+		w.Header().Add("Content-Type", "application/json")
 		if err != nil {
 			var errRes errResponse
-			w.Header().Add("Content-Type", "application/json")
 			if errors.Is(err, context.DeadlineExceeded) {
 				w.WriteHeader(http.StatusGatewayTimeout)
 				errRes = errResponse{ErrCode: 50001, Msg: "service time out"}
