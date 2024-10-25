@@ -59,7 +59,10 @@ func (rs RecipeService) CreateRecipe(name string, description string, cuisine do
 
 func (rs RecipeService) GetRecipe(ctx context.Context, uuidStr string) (recipe.Recipe, error) {
 	slog.Info("retrieving recipe..", "recipe_id", uuidStr)
-	recipeUuid := uuid.MustParse(uuidStr)
+	recipeUuid, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return recipe.Recipe{}, recipe.ErrInvalidID
+	}
 
 	r, err := rs.recipes.Get(ctx, recipeUuid)
 	if err != nil {

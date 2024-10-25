@@ -12,6 +12,7 @@ var (
 	ErrRecipeNotFound     = errors.New("recipe not found for given id")
 	ErrRecipeUpdateFailed = errors.New("recipe could not be updated")
 	ErrRecipeExists       = errors.New("recipe already exists for given id")
+	ErrInvalidID          = errors.New("invalid id format")
 )
 
 type Recipe struct {

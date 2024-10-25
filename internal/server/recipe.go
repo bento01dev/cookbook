@@ -72,8 +72,14 @@ func handleGetRecipe(rs recipeService) http.Handler {
 
 			if errors.Is(err, recipe.ErrRecipeNotFound) {
 				w.WriteHeader(http.StatusNotFound)
-				errRes = errResponse{ErrCode: 40001, Msg: fmt.Sprintf("recipe not found for id: %s", id)}
+				errRes = errResponse{ErrCode: 40401, Msg: fmt.Sprintf("recipe not found for id: %s", id)}
 			}
+
+			if errors.Is(err, recipe.ErrInvalidID) {
+				w.WriteHeader(http.StatusBadRequest)
+				errRes = errResponse{ErrCode: 40001, Msg: fmt.Sprintf("invalid format for id: %s", id)}
+			}
+
 			json.NewEncoder(w).Encode(errRes)
 			return
 		}
