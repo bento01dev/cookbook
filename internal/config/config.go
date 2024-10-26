@@ -6,10 +6,11 @@ import (
 )
 
 type Config struct {
-	Host               string
-	Port               string
-	InMemory           bool
-	GetRecipeTimeoutMs time.Duration
+	Host                string
+	Port                string
+	InMemory            bool
+	GetRecipeTimeout    time.Duration
+	CreateRecipeTimeout time.Duration
 }
 
 func NewConfig(getEnv func(string) string) (Config, error) {
@@ -33,18 +34,27 @@ func NewConfig(getEnv func(string) string) (Config, error) {
 		}
 	}
 
-	var getRecipeTimeoutMs = 1000 * time.Millisecond
+	var getRecipeTimeout = 1000 * time.Millisecond
 	if v := getEnv("GET_RECIPE_TIMEOUT"); v != "" {
-		getRecipeTimeoutMs, err = time.ParseDuration(v)
+		getRecipeTimeout, err = time.ParseDuration(v)
+		if err != nil {
+			return Config{}, err
+		}
+	}
+
+	var createRecipeTimeout = 1000 * time.Millisecond
+	if v := getEnv("CREATE_RECIPE_TIMEOUT"); v != "" {
+		getRecipeTimeout, err = time.ParseDuration(v)
 		if err != nil {
 			return Config{}, err
 		}
 	}
 
 	return Config{
-		Host:               host,
-		Port:               port,
-		InMemory:           inMemory,
-		GetRecipeTimeoutMs: getRecipeTimeoutMs,
+		Host:                host,
+		Port:                port,
+		InMemory:            inMemory,
+		GetRecipeTimeout:    getRecipeTimeout,
+		CreateRecipeTimeout: createRecipeTimeout,
 	}, err
 }

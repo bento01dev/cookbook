@@ -87,6 +87,6 @@ func addRoutes(
 ) {
 	mux.Handle("GET /healthz", handleHealthz())
 
-	mux.Handle("GET /recipe/{id}", timeoutMiddleware(handleGetRecipe(rs), conf.GetRecipeTimeoutMs))
-	mux.Handle("POST /recipe", handleCreateRecipe(rs))
+	mux.Handle("GET /recipe/{id}", timeoutMiddleware(handleGetRecipe(rs), conf.GetRecipeTimeout))
+	mux.Handle("POST /recipe", timeoutMiddleware(handleCreateRecipe(rs), conf.CreateRecipeTimeout))
 }

@@ -62,8 +62,8 @@ func (r Recipe) Cuisine() string {
 	return string(r.item.Cuisine)
 }
 
-func (r Recipe) Ingredients() []domain.Ingredient {
-	return r.Ingredients()
+func (r Recipe) Ingredients() []*domain.Ingredient {
+	return r.ingredients
 }
 
 func (r Recipe) Variations() []string {
@@ -72,4 +72,12 @@ func (r Recipe) Variations() []string {
 		res = append(res, v.Variation())
 	}
 	return res
+}
+
+func (r Recipe) Prep() []domain.Prep {
+	return r.prepSteps
+}
+
+func (r Recipe) Steps() []domain.Step {
+	return r.steps
 }

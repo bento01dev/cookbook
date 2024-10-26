@@ -11,7 +11,7 @@ import (
 
 type recipeRepository interface {
 	Get(context.Context, uuid.UUID) (recipe.Recipe, error)
-	Add(recipe.Recipe) error
+	Add(context.Context, recipe.Recipe) error
 	Update(recipe.Recipe) (recipe.Recipe, error)
 	Delete(uuid.UUID) error
 }
@@ -43,13 +43,13 @@ func WithMemoryRepository() RecipeConfiguration {
 	}
 }
 
-func (rs RecipeService) CreateRecipe(name string, description string, cuisine domain.CuisineType) (recipe.Recipe, error) {
+func (rs RecipeService) CreateRecipe(ctx context.Context, name string, description string, cuisine domain.CuisineType) (recipe.Recipe, error) {
 	r, err := recipe.NewRecipe(name, description, cuisine)
 	if err != nil {
 		return r, err
 	}
 
-	err = rs.recipes.Add(r)
+	err = rs.recipes.Add(ctx, r)
 	if err != nil {
 		return r, err
 	}

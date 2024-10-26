@@ -49,14 +49,25 @@ func (mr *MemoryRepository) get(id uuid.UUID) <-chan wrapper {
 	return ch
 }
 
-func (mr *MemoryRepository) Add(recipe Recipe) error {
-	if _, ok := mr.recipes[recipe.ID()]; ok {
-		return ErrRecipeExists
+func (mr *MemoryRepository) Add(ctx context.Context, recipe Recipe) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case res := <-mr.add(recipe):
+		return res
 	}
-	mr.mu.Lock()
-	mr.recipes[recipe.ID()] = recipe
-	mr.mu.Unlock()
-	return nil
+}
+
+func (mr *MemoryRepository) add(recipe Recipe) <-chan error {
+	ch := make(chan error)
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		mr.mu.Lock()
+		defer mr.mu.Unlock()
+		mr.recipes[recipe.ID()] = recipe
+		ch <- nil
+	}()
+	return ch
 }
 
 func (mr *MemoryRepository) Update(recipe Recipe) (Recipe, error) {

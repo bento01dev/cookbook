@@ -7,3 +7,11 @@ type Prep struct {
 	action     string
 	index      int
 }
+
+func (p Prep) Ingredient() string {
+	return p.ingredient.String()
+}
+
+func (p Prep) Action() string {
+	return p.action
+}
