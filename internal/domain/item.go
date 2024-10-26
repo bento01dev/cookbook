@@ -12,7 +12,6 @@ const (
 	Indian
 	Chinese
 	Western
-	African
 )
 
 type Item struct {

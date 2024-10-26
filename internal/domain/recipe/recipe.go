@@ -58,8 +58,8 @@ func (r Recipe) Description() string {
 	return r.item.Description
 }
 
-func (r Recipe) Cuisine() string {
-	return string(r.item.Cuisine)
+func (r Recipe) Cuisine() domain.CuisineType {
+	return r.item.Cuisine
 }
 
 func (r Recipe) Ingredients() []*domain.Ingredient {

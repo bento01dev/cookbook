@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/bento01dev/cookbook/internal/domain"
 	"github.com/bento01dev/cookbook/internal/domain/recipe"
@@ -21,11 +22,96 @@ type errResponse struct {
 	Msg     string `json:"msg"`
 }
 
+type cuisine string
+
+func (c cuisine) MarshalText() ([]byte, error) {
+	switch c {
+	case japanese, french, spanish, indian, chinese, western:
+		return []byte(c), nil
+	default:
+		return nil, fmt.Errorf("unknown type: %v", c)
+	}
+}
+
+func (c *cuisine) UnmarshalText(data []byte) error {
+	s := string(data)
+	switch strings.ToLower(s) {
+	case string(japanese):
+		*c = japanese
+		return nil
+	case string(french):
+		*c = french
+		return nil
+	case string(spanish):
+		*c = spanish
+		return nil
+	case string(indian):
+		*c = indian
+		return nil
+	case string(chinese):
+		*c = chinese
+		return nil
+	case string(western):
+		*c = western
+		return nil
+	default:
+		return fmt.Errorf("unknown type: %s", s)
+	}
+}
+
+func (c cuisine) ToDomain() domain.CuisineType {
+	var dc domain.CuisineType
+	switch c {
+	case japanese:
+		dc = domain.Japanese
+	case french:
+		dc = domain.French
+	case spanish:
+		dc = domain.Spanish
+	case indian:
+		dc = domain.Indian
+	case chinese:
+		dc = domain.Chinese
+	case western:
+		dc = domain.Western
+	default:
+		dc = domain.UnknownCuisine
+	}
+	return dc
+}
+
+func (c *cuisine) FromDomain(dc domain.CuisineType) {
+	switch dc {
+	case domain.Japanese:
+		*c = japanese
+	case domain.French:
+		*c = french
+	case domain.Spanish:
+		*c = spanish
+	case domain.Indian:
+		*c = indian
+	case domain.Chinese:
+		*c = chinese
+	case domain.Western:
+		*c = western
+	}
+}
+
+const (
+	unknown  cuisine = "unknown"
+	japanese cuisine = "japanese"
+	french   cuisine = "french"
+	spanish  cuisine = "spanish"
+	indian   cuisine = "indian"
+	chinese  cuisine = "chinese"
+	western  cuisine = "western"
+)
+
 func handleCreateRecipe(rs recipeService) http.Handler {
 	type request struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Cuisine     string `json:"cuisine"`
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Cuisine     cuisine `json:"cuisine"`
 	}
 
 	type response struct {
@@ -46,28 +132,12 @@ func handleCreateRecipe(rs recipeService) http.Handler {
 			return
 		}
 
-		var cuisine domain.CuisineType = domain.Indian
-		// switch reqObj.Cuisine {
-		// case string(domain.African):
-		// 	cuisine = domain.African
-		// case string(domain.Indian):
-		// 	cuisine = domain.Indian
-		// case string(domain.Japanese):
-		// 	cuisine = domain.Japanese
-		// case string(domain.French):
-		// 	cuisine = domain.French
-		// case string(domain.Spanish):
-		// 	cuisine = domain.Spanish
-		// case string(domain.Chinese):
-		// 	cuisine = domain.Chinese
-		// case string(domain.Western):
-		// 	cuisine = domain.Western
-		// }
-		// if cuisine == domain.UnknownCuisine {
-		// 	w.WriteHeader(http.StatusBadRequest)
-		// 	json.NewEncoder(w).Encode(errResponse{ErrCode: 40003, Msg: "Unknown cuisine"})
-		// 	return
-		// }
+		cuisine := reqObj.Cuisine.ToDomain()
+		if cuisine == domain.UnknownCuisine {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(errResponse{ErrCode: 40003, Msg: "Unknown cuisine"})
+			return
+		}
 
 		recipe, err := rs.CreateRecipe(ctx, reqObj.Name, reqObj.Description, cuisine)
 		if err != nil {
@@ -108,10 +178,10 @@ func handleGetRecipe(rs recipeService) http.Handler {
 
 	type recipeResponse struct {
 		Item struct {
-			ID          string `json:"id,omitempty"`
-			Name        string `json:"name,omitempty"`
-			Description string `json:"description,omitempty"`
-			Cuisine     string `json:"cuisine,omitempty"`
+			ID          string  `json:"id,omitempty"`
+			Name        string  `json:"name,omitempty"`
+			Description string  `json:"description,omitempty"`
+			Cuisine     cuisine `json:"cuisine,omitempty"`
 		} `json:"item"`
 		Ingredients []ingredient `json:"ingredients,omitempty"`
 		Variations  []string     `json:"variations,omitempty"`
@@ -124,6 +194,9 @@ func handleGetRecipe(rs recipeService) http.Handler {
 		res.Item.ID = r.ID().String()
 		res.Item.Name = r.Name()
 		res.Item.Description = r.Description()
+		var c cuisine
+		c.FromDomain(r.Cuisine())
+		res.Item.Cuisine = c
 		for _, v := range r.Ingredients() {
 			res.Ingredients = append(res.Ingredients, ingredient{ID: v.ID.String(), Name: v.Name, Type: string(v.Type)})
 		}
