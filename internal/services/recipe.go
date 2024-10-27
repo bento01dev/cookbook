@@ -53,12 +53,12 @@ func (rs RecipeService) CreateRecipe(ctx context.Context, name string, descripti
 	if err != nil {
 		return r, err
 	}
-	slog.Info("recipe successfully added", "recipe_id", r.ID().String())
+	slog.InfoContext(ctx, "recipe successfully added", "recipe_id", r.ID().String())
 	return r, nil
 }
 
 func (rs RecipeService) GetRecipe(ctx context.Context, uuidStr string) (recipe.Recipe, error) {
-	slog.Info("retrieving recipe..", "recipe_id", uuidStr)
+	slog.InfoContext(ctx, "retrieving recipe..", "recipe_id", uuidStr)
 	recipeUuid, err := uuid.Parse(uuidStr)
 	if err != nil {
 		return recipe.Recipe{}, recipe.ErrInvalidID

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -127,6 +128,7 @@ func handleCreateRecipe(rs recipeService) http.Handler {
 		var reqObj request
 		err := json.NewDecoder(r.Body).Decode(&reqObj)
 		if err != nil {
+			slog.ErrorContext(ctx, "parsing request object failed")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(errResponse{ErrCode: 40002, Msg: "Issue in parsing request body"})
 			return
@@ -134,10 +136,21 @@ func handleCreateRecipe(rs recipeService) http.Handler {
 
 		cuisine := reqObj.Cuisine.ToDomain()
 		if cuisine == domain.UnknownCuisine {
+			slog.ErrorContext(ctx, "unknown cuisine in request", "cuisine", string(reqObj.Cuisine))
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(errResponse{ErrCode: 40003, Msg: "Unknown cuisine"})
 			return
 		}
+
+		slog.InfoContext(
+			ctx,
+			"new recipe request",
+			slog.Group("payload",
+				slog.String("name", reqObj.Name),
+				slog.String("description", reqObj.Description),
+				slog.String("cuisine", string(reqObj.Cuisine)),
+			),
+		)
 
 		recipe, err := rs.CreateRecipe(ctx, reqObj.Name, reqObj.Description, cuisine)
 		if err != nil {
@@ -219,16 +232,19 @@ func handleGetRecipe(rs recipeService) http.Handler {
 		if err != nil {
 			var errRes errResponse
 			if errors.Is(err, context.DeadlineExceeded) {
+				slog.ErrorContext(ctx, "get recipe exceeded timeout", "recipe_id", id)
 				w.WriteHeader(http.StatusGatewayTimeout)
 				errRes = errResponse{ErrCode: 50001, Msg: "service time out"}
 			}
 
 			if errors.Is(err, recipe.ErrRecipeNotFound) {
+				slog.ErrorContext(ctx, "recipe not found for given id", "recipe_id", id)
 				w.WriteHeader(http.StatusNotFound)
 				errRes = errResponse{ErrCode: 40401, Msg: fmt.Sprintf("recipe not found for id: %s", id)}
 			}
 
 			if errors.Is(err, recipe.ErrInvalidID) {
+				slog.ErrorContext(ctx, "invalid id format", "recipe_id", id)
 				w.WriteHeader(http.StatusBadRequest)
 				errRes = errResponse{ErrCode: 40001, Msg: fmt.Sprintf("invalid format for id: %s", id)}
 			}

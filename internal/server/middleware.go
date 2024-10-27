@@ -12,21 +12,20 @@ import (
 func requestTimerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		ctx := r.Context()
 		h.ServeHTTP(w, r)
-		if request_id, ok := r.Context().Value("request_id").(string); ok {
-			slog.Info("request completed", "path", r.URL.Path, "method", r.Method, "request_id", request_id, "elapsed_time_ms", time.Since(start).Milliseconds())
-			return
-		}
-		slog.Info("request completed", "path", r.URL.Path, "method", r.Method, "elapsed_time_ms", time.Since(start).Milliseconds())
+		slog.InfoContext(ctx, "request completed", "path", r.URL.Path, "method", r.Method, "elapsed_time_ms", time.Since(start).Milliseconds())
 	})
 }
 
 func requestIdMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		request_id := ctx.Value("request_id")
-		if request_id == nil {
+		request_id := r.Header.Get("request_id")
+		if request_id == "" {
 			ctx = context.WithValue(ctx, "request_id", uuid.New().String())
+		} else {
+			ctx = context.WithValue(ctx, "request_id", request_id)
 		}
 		r = r.WithContext(ctx)
 		h.ServeHTTP(w, r)

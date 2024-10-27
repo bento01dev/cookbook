@@ -15,7 +15,7 @@ func Run(ctx context.Context, stdout io.Writer, stderr io.Writer, args []string,
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
-	initLog(stdout, getEnv("LOG_LEVEL"))
+	initLog(stdout, getEnv)
 	slog.Info("log config set..")
 	if err := startHttp(ctx, getEnv); err != nil {
 		return fmt.Errorf("startup sequence for service failed..%w", err)
@@ -23,10 +23,21 @@ func Run(ctx context.Context, stdout io.Writer, stderr io.Writer, args []string,
 	return nil
 }
 
-func initLog(w io.Writer, logLevelStr string) {
+type ContextHandler struct {
+	slog.Handler
+}
+
+func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
+	if requestID, ok := ctx.Value("request_id").(string); ok {
+		r.AddAttrs(slog.String("request_id", requestID))
+	}
+	return h.Handler.Handle(ctx, r)
+}
+
+func initLog(w io.Writer, getEnv func(string) string) {
 	var logLevel slog.Level = slog.LevelInfo
-	if logLevelStr != "" {
-		switch strings.ToLower(logLevelStr) {
+	if v := getEnv("LOG_LEVEL"); v != "" {
+		switch strings.ToLower(v) {
 		case "debug":
 			logLevel = slog.LevelDebug
 		case "info":
@@ -37,12 +48,19 @@ func initLog(w io.Writer, logLevelStr string) {
 			logLevel = slog.LevelError
 		}
 	}
+	defaultAttrs := []slog.Attr{
+		slog.String("service", getEnv("SERVICE_NAME")),
+		slog.String("env", getEnv("ENV")),
+		slog.String("host", getEnv("HOST_IP")),
+	}
 	opts := slog.HandlerOptions{
-		Level: logLevel,
+		AddSource: true,
+		Level:     logLevel,
 	}
 
-	logHandler := slog.NewJSONHandler(w, &opts)
+	baseHandler := slog.NewJSONHandler(w, &opts).WithAttrs(defaultAttrs)
+	contextHandler := ContextHandler{Handler: baseHandler}
 
-	logger := slog.New(logHandler)
+	logger := slog.New(&contextHandler)
 	slog.SetDefault(logger)
 }
