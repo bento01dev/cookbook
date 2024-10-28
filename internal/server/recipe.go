@@ -11,6 +11,7 @@ import (
 
 	"github.com/bento01dev/cookbook/internal/domain"
 	"github.com/bento01dev/cookbook/internal/domain/recipe"
+	"github.com/bento01dev/cookbook/internal/stats"
 )
 
 type recipeService interface {
@@ -108,7 +109,7 @@ const (
 	western  cuisine = "western"
 )
 
-func handleCreateRecipe(rs recipeService) http.Handler {
+func handleCreateRecipe(rs recipeService, statsCollection *stats.StatsCollection) http.Handler {
 	type request struct {
 		Name        string  `json:"name"`
 		Description string  `json:"description"`
@@ -165,12 +166,13 @@ func handleCreateRecipe(rs recipeService) http.Handler {
 			return
 		}
 
+		statsCollection.StatusOkInc()
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response{ID: recipe.ID().String(), Name: recipe.Name()})
 	})
 }
 
-func handleGetRecipe(rs recipeService) http.Handler {
+func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) http.Handler {
 
 	type ingredient struct {
 		ID   string `json:"id,omitempty"`
@@ -245,6 +247,7 @@ func handleGetRecipe(rs recipeService) http.Handler {
 
 			if errors.Is(err, recipe.ErrInvalidID) {
 				slog.ErrorContext(ctx, "invalid id format", "recipe_id", id)
+				statsCollection.BadRequestInc()
 				w.WriteHeader(http.StatusBadRequest)
 				errRes = errResponse{ErrCode: 40001, Msg: fmt.Sprintf("invalid format for id: %s", id)}
 			}
@@ -253,6 +256,7 @@ func handleGetRecipe(rs recipeService) http.Handler {
 			return
 		}
 
+		statsCollection.StatusOkInc()
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(convertResponse(recipeRes))
 	})

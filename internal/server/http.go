@@ -12,6 +12,8 @@ import (
 
 	"github.com/bento01dev/cookbook/internal/config"
 	"github.com/bento01dev/cookbook/internal/services"
+	"github.com/bento01dev/cookbook/internal/stats"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func startHttp(ctx context.Context, getEnv func(string) string) error {
@@ -24,6 +26,8 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 		return fmt.Errorf("unable to generate config:%w", err)
 	}
 
+	statsCollection := stats.Stats(getEnv)
+
 	// initialising and starting server..
 	var rs recipeService
 	if getEnv("MEMORY_REPO") != "" {
@@ -33,7 +37,7 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 		}
 	}
 
-	srv := NewServer(rs, conf)
+	srv := NewServer(rs, statsCollection, conf)
 	httpServer := &http.Server{
 		Addr:    net.JoinHostPort(conf.Host, conf.Port),
 		Handler: srv,
@@ -69,11 +73,12 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 
 func NewServer(
 	rs recipeService,
+	statsCollection *stats.StatsCollection,
 	conf config.Config,
 ) http.Handler {
 	mux := http.NewServeMux()
-	addRoutes(mux, rs, conf)
-	//TODO: add middlewares
+	addRoutes(mux, rs, statsCollection, conf)
+
 	var handler http.Handler = mux
 	handler = requestTimerMiddleware(handler)
 	handler = requestIdMiddleware(handler)
@@ -83,10 +88,13 @@ func NewServer(
 func addRoutes(
 	mux *http.ServeMux,
 	rs recipeService,
+	statsCollection *stats.StatsCollection,
 	conf config.Config,
 ) {
 	mux.Handle("GET /healthz", handleHealthz())
 
-	mux.Handle("GET /recipe/{id}", timeoutMiddleware(handleGetRecipe(rs), conf.GetRecipeTimeout))
-	mux.Handle("POST /recipe", timeoutMiddleware(handleCreateRecipe(rs), conf.CreateRecipeTimeout))
+	mux.Handle("GET /recipe/{id}", timeoutMiddleware(handleGetRecipe(rs, statsCollection), conf.GetRecipeTimeout))
+	mux.Handle("POST /recipe", timeoutMiddleware(handleCreateRecipe(rs, statsCollection), conf.CreateRecipeTimeout))
+
+	mux.Handle("/metrics", promhttp.Handler())
 }
