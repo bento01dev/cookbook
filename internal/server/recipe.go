@@ -166,7 +166,7 @@ func handleCreateRecipe(rs recipeService, statsCollection *stats.StatsCollection
 			return
 		}
 
-		statsCollection.StatusOkInc()
+		statsCollection.StatusOkInc("create_recipe")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response{ID: recipe.ID().String(), Name: recipe.Name()})
 	})
@@ -247,7 +247,7 @@ func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) h
 
 			if errors.Is(err, recipe.ErrInvalidID) {
 				slog.ErrorContext(ctx, "invalid id format", "recipe_id", id)
-				statsCollection.BadRequestInc()
+				statsCollection.BadRequestInc("get_recipe")
 				w.WriteHeader(http.StatusBadRequest)
 				errRes = errResponse{ErrCode: 40001, Msg: fmt.Sprintf("invalid format for id: %s", id)}
 			}
@@ -256,7 +256,7 @@ func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) h
 			return
 		}
 
-		statsCollection.StatusOkInc()
+		statsCollection.StatusOkInc("get_recipe")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(convertResponse(recipeRes))
 	})

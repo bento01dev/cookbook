@@ -22,7 +22,7 @@ func newStats(serviceName, env, host string) *StatsCollection {
 			Namespace: "http",
 			Name:      "success",
 		},
-		[]string{"service", "env", "host"},
+		[]string{"service", "env", "host", "endpoint"},
 	)
 
 	badRequestGauge := promauto.NewGaugeVec(
@@ -30,7 +30,7 @@ func newStats(serviceName, env, host string) *StatsCollection {
 			Namespace: "http",
 			Name:      "bad_request",
 		},
-		[]string{"service", "env", "host"},
+		[]string{"service", "env", "host", "endpoint"},
 	)
 
 	internalErrGauge := promauto.NewGaugeVec(
@@ -38,7 +38,7 @@ func newStats(serviceName, env, host string) *StatsCollection {
 			Namespace: "http",
 			Name:      "internal_error",
 		},
-		[]string{"service", "env", "host"},
+		[]string{"service", "env", "host", "endpoint"},
 	)
 
 	return &StatsCollection{
@@ -51,21 +51,21 @@ func newStats(serviceName, env, host string) *StatsCollection {
 	}
 }
 
-func (s *StatsCollection) StatusOkInc() {
+func (s *StatsCollection) StatusOkInc(endpoint string) {
 	s.okRequestGauge.
-		With(prometheus.Labels{"service": s.serviceName, "env": s.env, "host": s.host}).
+		With(prometheus.Labels{"service": s.serviceName, "env": s.env, "host": s.host, "endpoint": endpoint}).
 		Inc()
 }
 
-func (s *StatsCollection) BadRequestInc() {
+func (s *StatsCollection) BadRequestInc(endpoint string) {
 	s.badRequestGauge.
-		With(prometheus.Labels{"service": s.serviceName, "env": s.env, "host": s.host}).
+		With(prometheus.Labels{"service": s.serviceName, "env": s.env, "host": s.host, "endpoint": endpoint}).
 		Inc()
 }
 
-func (s *StatsCollection) InternalServerErrorInc() {
+func (s *StatsCollection) InternalServerErrorInc(endpoint string) {
 	s.internalErrGauge.
-		With(prometheus.Labels{"service": s.serviceName, "env": s.env, "host": s.host}).
+		With(prometheus.Labels{"service": s.serviceName, "env": s.env, "host": s.host, "endpoint": endpoint}).
 		Inc()
 }
 
