@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/bento01dev/cookbook/internal/domain"
 	"github.com/bento01dev/cookbook/internal/domain/recipe"
@@ -122,6 +123,7 @@ func handleCreateRecipe(rs recipeService, statsCollection *stats.StatsCollection
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		ctx := r.Context()
 
 		w.Header().Add("Content-Type", "application/json")
@@ -167,6 +169,7 @@ func handleCreateRecipe(rs recipeService, statsCollection *stats.StatsCollection
 		}
 
 		statsCollection.StatusOkInc("create_recipe")
+		statsCollection.ResponseTime("create_recipe", time.Since(start).Milliseconds())
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response{ID: recipe.ID().String(), Name: recipe.Name()})
 	})
@@ -226,6 +229,7 @@ func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) h
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		id := r.PathValue("id")
 		ctx := r.Context()
 		recipeRes, err := rs.GetRecipe(ctx, id)
@@ -257,6 +261,7 @@ func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) h
 		}
 
 		statsCollection.StatusOkInc("get_recipe")
+		statsCollection.ResponseTime("get_recipe", time.Since(start).Milliseconds())
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(convertResponse(recipeRes))
 	})
