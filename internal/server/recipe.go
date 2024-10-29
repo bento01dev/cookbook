@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -127,22 +126,17 @@ func handleCreateRecipe(rs recipeService, statsCollection *stats.StatsCollection
 		start := time.Now()
 		ctx := r.Context()
 
-		w.Header().Add("Content-Type", "application/json")
-
-		var reqObj request
-		err := json.NewDecoder(r.Body).Decode(&reqObj)
+		reqObj, err := decode[request](r)
 		if err != nil {
 			slog.ErrorContext(ctx, "parsing request object failed")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(errResponse{ErrCode: 40002, Msg: "Issue in parsing request body"})
+			encode[errResponse](w, http.StatusBadRequest, errResponse{ErrCode: 40002, Msg: "Issue in parsing request body"})
 			return
 		}
 
 		cuisine := reqObj.Cuisine.ToDomain()
 		if cuisine == domain.UnknownCuisine {
 			slog.ErrorContext(ctx, "unknown cuisine in request", "cuisine", string(reqObj.Cuisine))
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(errResponse{ErrCode: 40003, Msg: "Unknown cuisine"})
+			encode[errResponse](w, http.StatusBadRequest, errResponse{ErrCode: 40003, Msg: "Unknown cuisine"})
 			return
 		}
 
@@ -159,20 +153,17 @@ func handleCreateRecipe(rs recipeService, statsCollection *stats.StatsCollection
 		recipe, err := rs.CreateRecipe(ctx, reqObj.Name, reqObj.Description, cuisine)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				w.WriteHeader(http.StatusGatewayTimeout)
-				json.NewEncoder(w).Encode(errResponse{ErrCode: 50001, Msg: "service time out"})
+				encode[errResponse](w, http.StatusBadRequest, errResponse{ErrCode: 50001, Msg: "service time out"})
 				return
 			}
 
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(errResponse{ErrCode: 50002, Msg: "Uncaught exception"})
+			encode[errResponse](w, http.StatusInternalServerError, errResponse{ErrCode: 50002, Msg: "Uncaught exception"})
 			return
 		}
 
 		statsCollection.StatusOkInc("create_recipe")
 		statsCollection.ResponseTime("create_recipe", time.Since(start).Milliseconds())
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response{ID: recipe.ID().String(), Name: recipe.Name(), CreatedAt: recipe.CreatedAt()})
+		encode[response](w, http.StatusOK, response{ID: recipe.ID().String(), Name: recipe.Name(), CreatedAt: recipe.CreatedAt()})
 	})
 }
 
@@ -237,35 +228,34 @@ func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) h
 		ctx := r.Context()
 		recipeRes, err := rs.GetRecipe(ctx, id)
 
-		w.Header().Add("Content-Type", "application/json")
 		if err != nil {
 			var errRes errResponse
+			var status int
 			if errors.Is(err, context.DeadlineExceeded) {
 				slog.ErrorContext(ctx, "get recipe exceeded timeout", "recipe_id", id)
-				w.WriteHeader(http.StatusGatewayTimeout)
+				status = http.StatusGatewayTimeout
 				errRes = errResponse{ErrCode: 50001, Msg: "service time out"}
 			}
 
 			if errors.Is(err, recipe.ErrRecipeNotFound) {
 				slog.ErrorContext(ctx, "recipe not found for given id", "recipe_id", id)
-				w.WriteHeader(http.StatusNotFound)
+				status = http.StatusNotFound
 				errRes = errResponse{ErrCode: 40401, Msg: fmt.Sprintf("recipe not found for id: %s", id)}
 			}
 
 			if errors.Is(err, recipe.ErrInvalidID) {
 				slog.ErrorContext(ctx, "invalid id format", "recipe_id", id)
 				statsCollection.BadRequestInc("get_recipe")
-				w.WriteHeader(http.StatusBadRequest)
+				status = http.StatusBadRequest
 				errRes = errResponse{ErrCode: 40001, Msg: fmt.Sprintf("invalid format for id: %s", id)}
 			}
 
-			json.NewEncoder(w).Encode(errRes)
+			encode[errResponse](w, status, errRes)
 			return
 		}
 
 		statsCollection.StatusOkInc("get_recipe")
 		statsCollection.ResponseTime("get_recipe", time.Since(start).Milliseconds())
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(convertResponse(recipeRes))
+		encode[recipeResponse](w, http.StatusOK, convertResponse(recipeRes))
 	})
 }
