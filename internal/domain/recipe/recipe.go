@@ -86,6 +86,6 @@ func (r Recipe) Steps() []domain.Step {
 	return r.steps
 }
 
-func (r Recipe) CreatedAt() time.Time {
-	return r.createdAt
+func (r Recipe) CreatedAt() string {
+	return r.createdAt.Format(time.RFC3339)
 }

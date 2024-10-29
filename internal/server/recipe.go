@@ -172,7 +172,7 @@ func handleCreateRecipe(rs recipeService, statsCollection *stats.StatsCollection
 		statsCollection.StatusOkInc("create_recipe")
 		statsCollection.ResponseTime("create_recipe", time.Since(start).Milliseconds())
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response{ID: recipe.ID().String(), Name: recipe.Name(), CreatedAt: recipe.CreatedAt().Format(time.RFC3339)})
+		json.NewEncoder(w).Encode(response{ID: recipe.ID().String(), Name: recipe.Name(), CreatedAt: recipe.CreatedAt()})
 	})
 }
 
@@ -214,7 +214,7 @@ func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) h
 		res.Item.ID = r.ID().String()
 		res.Item.Name = r.Name()
 		res.Item.Description = r.Description()
-		res.Item.CreatedAt = r.CreatedAt().Format(time.RFC3339)
+		res.Item.CreatedAt = r.CreatedAt()
 		var c cuisine
 		c.FromDomain(r.Cuisine())
 		res.Item.Cuisine = c
