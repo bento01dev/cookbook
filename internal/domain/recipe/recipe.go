@@ -2,6 +2,7 @@ package recipe
 
 import (
 	"errors"
+	"time"
 
 	"github.com/bento01dev/cookbook/internal/domain"
 	"github.com/google/uuid"
@@ -22,6 +23,8 @@ type Recipe struct {
 	prepSteps   []domain.Prep
 	steps       []domain.Step
 	pairings    []domain.Pairing
+	createdAt   time.Time
+	updatedAt   time.Time
 }
 
 func NewRecipe(name string, description string, cuisine domain.CuisineType) (Recipe, error) {
@@ -43,6 +46,7 @@ func NewRecipe(name string, description string, cuisine domain.CuisineType) (Rec
 		prepSteps:   make([]domain.Prep, 0),
 		steps:       make([]domain.Step, 0),
 		pairings:    make([]domain.Pairing, 0),
+		createdAt:   time.Now().UTC(),
 	}, nil
 }
 
@@ -80,4 +84,8 @@ func (r Recipe) Prep() []domain.Prep {
 
 func (r Recipe) Steps() []domain.Step {
 	return r.steps
+}
+
+func (r Recipe) CreatedAt() time.Time {
+	return r.createdAt
 }

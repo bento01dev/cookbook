@@ -118,8 +118,9 @@ func handleCreateRecipe(rs recipeService, statsCollection *stats.StatsCollection
 	}
 
 	type response struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
+		ID        string `json:"id"`
+		Name      string `json:"name"`
+		CreatedAt string `json:"created_at"`
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +172,7 @@ func handleCreateRecipe(rs recipeService, statsCollection *stats.StatsCollection
 		statsCollection.StatusOkInc("create_recipe")
 		statsCollection.ResponseTime("create_recipe", time.Since(start).Milliseconds())
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response{ID: recipe.ID().String(), Name: recipe.Name()})
+		json.NewEncoder(w).Encode(response{ID: recipe.ID().String(), Name: recipe.Name(), CreatedAt: recipe.CreatedAt().Format(time.RFC3339)})
 	})
 }
 
@@ -200,6 +201,7 @@ func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) h
 			Name        string  `json:"name,omitempty"`
 			Description string  `json:"description,omitempty"`
 			Cuisine     cuisine `json:"cuisine,omitempty"`
+			CreatedAt   string  `json:"created_at"`
 		} `json:"item"`
 		Ingredients []ingredient `json:"ingredients,omitempty"`
 		Variations  []string     `json:"variations,omitempty"`
@@ -212,6 +214,7 @@ func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) h
 		res.Item.ID = r.ID().String()
 		res.Item.Name = r.Name()
 		res.Item.Description = r.Description()
+		res.Item.CreatedAt = r.CreatedAt().Format(time.RFC3339)
 		var c cuisine
 		c.FromDomain(r.Cuisine())
 		res.Item.Cuisine = c
