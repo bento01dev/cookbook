@@ -2,18 +2,20 @@ package services
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/bento01dev/cookbook/internal/domain"
 	"github.com/bento01dev/cookbook/internal/domain/recipe"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type recipeRepository interface {
 	Get(context.Context, uuid.UUID) (recipe.Recipe, error)
 	Add(context.Context, recipe.Recipe) error
-	Update(recipe.Recipe) (recipe.Recipe, error)
-	Delete(uuid.UUID) error
+	Update(context.Context, recipe.Recipe) (recipe.Recipe, error)
+	Delete(context.Context, uuid.UUID) error
 }
 
 type RecipeService struct {
@@ -38,6 +40,24 @@ func NewRecipeService(cfgs ...RecipeConfiguration) (RecipeService, error) {
 func WithMemoryRepository() RecipeConfiguration {
 	return func(rs *RecipeService) error {
 		mr := recipe.NewMemoryRepository()
+		rs.recipes = mr
+		return nil
+	}
+}
+
+func WithMongoRepository(client *mongo.Client, getEnv func(string) string) RecipeConfiguration {
+	return func(rs *RecipeService) error {
+		databaseName := getEnv("MONGO_DB")
+		if databaseName == "" {
+			return errors.New("DB not set. Set env MONGO_DB")
+		}
+
+		collectionName := getEnv("RECIPE_COLLECTION")
+		if collectionName == "" {
+			return errors.New("recipe collection not set. Set env RECIPE_COLLECTION")
+		}
+
+		mr := recipe.NewMongoRepository(client, databaseName, collectionName)
 		rs.recipes = mr
 		return nil
 	}

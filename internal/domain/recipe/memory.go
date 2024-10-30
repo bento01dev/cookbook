@@ -70,7 +70,7 @@ func (mr *MemoryRepository) add(recipe Recipe) <-chan error {
 	return ch
 }
 
-func (mr *MemoryRepository) Update(recipe Recipe) (Recipe, error) {
+func (mr *MemoryRepository) Update(ctx context.Context, recipe Recipe) (Recipe, error) {
 	if _, ok := mr.recipes[recipe.ID()]; ok {
 		return recipe, ErrRecipeExists
 	}
@@ -80,7 +80,7 @@ func (mr *MemoryRepository) Update(recipe Recipe) (Recipe, error) {
 	return recipe, nil
 }
 
-func (mr *MemoryRepository) Delete(id uuid.UUID) error {
+func (mr *MemoryRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	if _, ok := mr.recipes[id]; !ok {
 		return ErrRecipeNotFound
 	}

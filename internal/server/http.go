@@ -7,10 +7,12 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/bento01dev/cookbook/internal/config"
+	"github.com/bento01dev/cookbook/internal/db"
 	"github.com/bento01dev/cookbook/internal/services"
 	"github.com/bento01dev/cookbook/internal/stats"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -30,7 +32,22 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 
 	// initialising and starting server..
 	var rs recipeService
-	if getEnv("MEMORY_REPO") != "" {
+	switch strings.ToLower(getEnv("DB_TYPE")) {
+	case "memory":
+		rs, err = services.NewRecipeService(services.WithMemoryRepository())
+		if err != nil {
+			return err
+		}
+	case "mongo":
+		client, err := db.MongoClient(getEnv)
+		if err != nil {
+			return fmt.Errorf("mongo client initialisation failed: %w", err)
+		}
+		rs, err = services.NewRecipeService(services.WithMongoRepository(client, getEnv))
+		if err != nil {
+			return err
+		}
+	default:
 		rs, err = services.NewRecipeService(services.WithMemoryRepository())
 		if err != nil {
 			return err
@@ -60,8 +77,16 @@ func startHttp(ctx context.Context, getEnv func(string) string) error {
 		<-ctx.Done()
 		slog.Info("Shutting down service..", "addr", httpServer.Addr)
 		shutdownCtx := context.Background()
-		shutdownCtx, cancel := context.WithTimeout(shutdownCtx, 10*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(shutdownCtx, 60*time.Second)
 		defer cancel()
+		switch strings.ToLower(getEnv("DB_TYPE")) {
+		case "memory":
+			slog.Info("nothing to clean up for memory db..")
+		case "mongo":
+			if err := db.Close(shutdownCtx); err != nil {
+				slog.Error("did not successfully close mongo connection", "err", err.Error())
+			}
+		}
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
 			slog.Error("shutdown of server was not graceful", "err", err.Error())
 		}
