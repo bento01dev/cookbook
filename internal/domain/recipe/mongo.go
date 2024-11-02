@@ -2,6 +2,7 @@ package recipe
 
 import (
 	"context"
+	"time"
 
 	"github.com/bento01dev/cookbook/internal/domain"
 	"github.com/google/uuid"
@@ -24,9 +25,10 @@ func NewMongoRepository(client *mongo.Client, databaseName, collectionName strin
 }
 
 type recipe struct {
-	ID          uuid.UUID `bson:"id"`
-	Name        string    `bson:"name"`
-	Description string    `bson:"description"`
+	ID          uuid.UUID      `bson:"id"`
+	Name        string         `bson:"name"`
+	Description string         `bson:"description"`
+	CreatedAt   bson.Timestamp `bson:"created_at"`
 }
 
 func (r recipe) ToRecipe() Recipe {
@@ -36,6 +38,7 @@ func (r recipe) ToRecipe() Recipe {
 			Name:        r.Name,
 			Description: r.Description,
 		},
+		createdAt: time.Unix(int64(r.CreatedAt.T), 0),
 	}
 }
 
@@ -44,6 +47,7 @@ func recipeFromRecipe(r Recipe) recipe {
 		ID:          r.item.ID,
 		Name:        r.item.Name,
 		Description: r.item.Description,
+		CreatedAt:   bson.Timestamp{T: uint32(r.createdAt.Unix())},
 	}
 }
 
