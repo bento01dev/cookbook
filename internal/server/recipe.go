@@ -172,7 +172,7 @@ func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) h
 	type ingredient struct {
 		ID   string `json:"id,omitempty"`
 		Name string `json:"name,omitempty"`
-		Type string `json:"type,omitempty"`
+		Type int    `json:"type,omitempty"`
 	}
 
 	type prep struct {
@@ -210,7 +210,7 @@ func handleGetRecipe(rs recipeService, statsCollection *stats.StatsCollection) h
 		c.FromDomain(r.Cuisine())
 		res.Item.Cuisine = c
 		for _, v := range r.Ingredients() {
-			res.Ingredients = append(res.Ingredients, ingredient{ID: v.ID.String(), Name: v.Name, Type: string(v.Type)})
+			res.Ingredients = append(res.Ingredients, ingredient{ID: v.ID.String(), Name: v.Name, Type: int(v.Type)})
 		}
 		res.Variations = r.Variations()
 		for _, p := range r.Prep() {
