@@ -12,36 +12,39 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 )
 
 var mongoURL string
 var mongoContainer *mongodb.MongoDBContainer
 
-func getEnv(key string) string {
-	switch key {
-	case "DB_TYPE":
-		return "mongo"
-	case "LOG_LEVEL":
-		return "info"
-	case "SERVICE_NAME":
-		return "test_cookbook"
-	case "ENV":
-		return "test"
-	case "HOST_IP":
-		return "127.0.0.1"
-	case "HTTP_HOST":
-		return "127.0.0.1"
-	case "HTTP_PORT":
-		return "8080"
-	case "MONGO_DB_URL":
-		return mongoURL
-	case "MONGO_DB":
-		return "cookbook"
-	case "RECIPE_COLLECTION":
-		return "recipe"
-	default:
-		return ""
+func getEnv(mongoURL string) func(string) string {
+	return func(s string) string {
+		switch s {
+		case "DB_TYPE":
+			return "mongo"
+		case "LOG_LEVEL":
+			return "info"
+		case "SERVICE_NAME":
+			return "test_cookbook"
+		case "ENV":
+			return "test"
+		case "HOST_IP":
+			return "127.0.0.1"
+		case "HTTP_HOST":
+			return "127.0.0.1"
+		case "HTTP_PORT":
+			return "8080"
+		case "MONGO_DB_URL":
+			return mongoURL
+		case "MONGO_DB":
+			return "cookbook"
+		case "RECIPE_COLLECTION":
+			return "recipe"
+		default:
+			return ""
+		}
 	}
 }
 
@@ -90,46 +93,48 @@ func waitForReady(
 	}
 }
 
-func setupMongoContainer(ctx context.Context) error {
+type RecipeTestSuite struct {
+	suite.Suite
+	mongoContainer *mongodb.MongoDBContainer
+	mongoURL       string
+	ctx            context.Context
+}
+
+func (suite *RecipeTestSuite) SetupSuite() {
+	ctx := context.Background()
+	suite.ctx = ctx
 	container, err := mongodb.Run(ctx, "mongo:8")
 	if err != nil {
-		return err
-	}
-	mongoContainer = container
-	url, err := mongoContainer.ConnectionString(ctx)
-	if err != nil {
-		return err
-	}
-	mongoURL = url
-	return nil
-}
-
-func tearDown(ctx context.Context) error {
-	if mongoContainer != nil {
-		return mongoContainer.Terminate(ctx)
-	}
-	return nil
-}
-
-func TestMain(m *testing.M) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	if err := setupMongoContainer(ctx); err != nil {
+		fmt.Println("mongodb setup failed:", err.Error())
 		os.Exit(1)
 	}
-	go Run(ctx, io.Discard, io.Discard, []string{}, getEnv)
+	suite.mongoContainer = container
+	url, err := container.ConnectionString(ctx)
+	if err != nil {
+		fmt.Println("mongodb setup failed:", err.Error())
+		os.Exit(1)
+	}
+	suite.mongoURL = url
+	go Run(ctx, io.Discard, io.Discard, []string{}, getEnv(suite.mongoURL))
 	if err := waitForReady(ctx, 10*time.Second, "http://localhost:8080/healthz"); err != nil {
 		os.Exit(1)
 	}
-	fmt.Println("service started successfully..")
-	code := m.Run()
-	if err := tearDown(ctx); err != nil {
-		fmt.Println("mongo testcontainer shutdown didnt work properly:", err.Error())
-	}
-	os.Exit(code)
 }
 
-func TestCreateRecipe(t *testing.T) {
+func (suite *RecipeTestSuite) TearDownSuite() {
+	if err := suite.mongoContainer.Terminate(suite.ctx); err != nil {
+		fmt.Println("issue in stopping mongo:", err.Error())
+		os.Exit(1)
+	}
+}
+
+func TestRecipe(t *testing.T) {
+	suite.Run(t, new(RecipeTestSuite))
+}
+
+func (suite *RecipeTestSuite) TestCreateRecipe() {
+	t := suite.T()
+
 	client := http.Client{}
 	body := struct {
 		Name        string `json:"name"`
@@ -162,7 +167,9 @@ func TestCreateRecipe(t *testing.T) {
 	assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
 }
 
-func TestGetRecipe(t *testing.T) {
+func (suite *RecipeTestSuite) TestGetRecipe() {
+	t := suite.T()
+
 	client := http.Client{}
 	req, err := http.NewRequestWithContext(
 		context.Background(),
