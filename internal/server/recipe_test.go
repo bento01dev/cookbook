@@ -12,10 +12,16 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 )
+
+var mongoURL string
+var mongoContainer *mongodb.MongoDBContainer
 
 func getEnv(key string) string {
 	switch key {
+	case "DB_TYPE":
+		return "mongo"
 	case "LOG_LEVEL":
 		return "info"
 	case "SERVICE_NAME":
@@ -28,6 +34,12 @@ func getEnv(key string) string {
 		return "127.0.0.1"
 	case "HTTP_PORT":
 		return "8080"
+	case "MONGO_DB_URL":
+		return mongoURL
+	case "MONGO_DB":
+		return "cookbook"
+	case "RECIPE_COLLECTION":
+		return "recipe"
 	default:
 		return ""
 	}
@@ -78,15 +90,43 @@ func waitForReady(
 	}
 }
 
+func setupMongoContainer(ctx context.Context) error {
+	container, err := mongodb.Run(ctx, "mongo:8")
+	if err != nil {
+		return err
+	}
+	mongoContainer = container
+	url, err := mongoContainer.ConnectionString(ctx)
+	if err != nil {
+		return err
+	}
+	mongoURL = url
+	return nil
+}
+
+func tearDown(ctx context.Context) error {
+	if mongoContainer != nil {
+		return mongoContainer.Terminate(ctx)
+	}
+	return nil
+}
+
 func TestMain(m *testing.M) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	if err := setupMongoContainer(ctx); err != nil {
+		os.Exit(1)
+	}
 	go Run(ctx, io.Discard, io.Discard, []string{}, getEnv)
 	if err := waitForReady(ctx, 10*time.Second, "http://localhost:8080/healthz"); err != nil {
 		os.Exit(1)
 	}
 	fmt.Println("service started successfully..")
-	os.Exit(m.Run())
+	code := m.Run()
+	if err := tearDown(ctx); err != nil {
+		fmt.Println("mongo testcontainer shutdown didnt work properly:", err.Error())
+	}
+	os.Exit(code)
 }
 
 func TestCreateRecipe(t *testing.T) {
@@ -119,6 +159,7 @@ func TestCreateRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
 }
 
 func TestGetRecipe(t *testing.T) {
@@ -137,4 +178,5 @@ func TestGetRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+	assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
 }
