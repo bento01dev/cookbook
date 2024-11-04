@@ -2,6 +2,7 @@ package recipe
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/bento01dev/cookbook/internal/domain"
@@ -55,6 +56,9 @@ func (mr *MongoRepository) Get(ctx context.Context, id uuid.UUID) (Recipe, error
 	collection := mr.client.Database(mr.databaseName).Collection(mr.collectionName)
 	var result recipe
 	if err := collection.FindOne(ctx, bson.M{"id": id}).Decode(&result); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return Recipe{}, ErrRecipeNotFound
+		}
 		return Recipe{}, err
 	}
 	return result.ToRecipe(), nil

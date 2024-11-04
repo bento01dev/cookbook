@@ -98,11 +98,13 @@ type RecipeTestSuite struct {
 	mongoContainer *mongodb.MongoDBContainer
 	mongoURL       string
 	ctx            context.Context
+	cancel         context.CancelFunc
 }
 
 func (suite *RecipeTestSuite) SetupSuite() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 	suite.ctx = ctx
+	suite.cancel = cancel
 	container, err := mongodb.Run(ctx, "mongo:8")
 	if err != nil {
 		fmt.Println("mongodb setup failed:", err.Error())
@@ -126,6 +128,7 @@ func (suite *RecipeTestSuite) TearDownSuite() {
 		fmt.Println("issue in stopping mongo:", err.Error())
 		os.Exit(1)
 	}
+	suite.cancel()
 }
 
 func TestRecipe(t *testing.T) {
@@ -151,7 +154,7 @@ func (suite *RecipeTestSuite) TestCreateRecipe() {
 		t.Fatal(err)
 	}
 	req, err := http.NewRequestWithContext(
-		context.Background(),
+		suite.ctx,
 		http.MethodPost,
 		"http://localhost:8080/recipe",
 		&buf,
@@ -163,6 +166,7 @@ func (suite *RecipeTestSuite) TestCreateRecipe() {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer res.Body.Close()
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
 }
@@ -172,7 +176,7 @@ func (suite *RecipeTestSuite) TestGetRecipe() {
 
 	client := http.Client{}
 	req, err := http.NewRequestWithContext(
-		context.Background(),
+		suite.ctx,
 		http.MethodGet,
 		"http://localhost:8080/recipe/abc",
 		nil,
@@ -184,6 +188,29 @@ func (suite *RecipeTestSuite) TestGetRecipe() {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer res.Body.Close()
 	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+	assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
+}
+
+func (suite *RecipeTestSuite) TestNotFoundRecipe() {
+	t := suite.T()
+
+	client := http.Client{}
+	req, err := http.NewRequestWithContext(
+		suite.ctx,
+		http.MethodGet,
+		"http://localhost:8080/recipe/3f2a4244-d10b-464f-9985-b63fda452fec",
+		nil,
+	)
+	if err != nil {
+		t.Fatal(fmt.Errorf("error in creating request: %w", err))
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(fmt.Errorf("error in sending request: %w", err))
+	}
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusNotFound, res.StatusCode)
 	assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
 }
