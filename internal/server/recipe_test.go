@@ -43,6 +43,7 @@ func getEnv(mongoURL string) func(string) string {
 		case "RECIPE_COLLECTION":
 			return "recipe"
 		default:
+            //TODO: maybe switch this to panic to be explicit about config?
 			return ""
 		}
 	}

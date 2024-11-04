@@ -1,7 +1,4 @@
-# cookbook
-A DDD backend for managing food recipes
+# Sample http app
 
-Cookbook (aggregate) is a top level resource.
-Each cookbook has a list of recipe (aggregate).
-A food item has variations (value object) and items (entity).
-A item contains prep (value object), ingredients (entity), steps (value object) and pairings (value object).
+A sample http backend service with some DDD and Mat Ryer's https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/
+thrown in for fun..
